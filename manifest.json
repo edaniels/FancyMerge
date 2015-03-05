@@ -8,7 +8,7 @@
   "content_scripts": [
     {
       "matches": ["*://github.com/*/*/pull/*"],
-      "js": ["jquery-2.1.3.min.js", "fancyButton.js" ],
+      "js": ["jquery-2.1.3.min.js", "contentscript.js"],
       "run_at": "document_end"  
     }
   ],
@@ -18,5 +18,11 @@
     "persistent": false
   },
 
-  "permissions": ["activeTab", "*://localhost/*"]
+  "permissions": ["activeTab", "*://localhost/*"],
+
+  "web_accessible_resources": ["fancyButton.js"],
+
+  "externally_connectable": {
+    "matches": ["*://github.com/*/*/pull/*"]
+  }
 }

@@ -3,6 +3,8 @@ var ORGANIZATION_INDEX = 1;
 var REPOSITORY_INDEX = 2;
 var PULL_REQUEST_INDEX = 4;
 
+var SERVER_URI = "http://localhost:8080/";
+
 function createResourcePath(sender) {
 	var senderUrl = document.createElement('a');
 	senderUrl.href = sender.url;
@@ -12,43 +14,44 @@ function createResourcePath(sender) {
 	return resource.join(PATH_DELIMITER);
 }
 
-function canFancyMerge(sender) {
-	var resource = createResourcePath(sender);
-	console.log('Checking if can fancy merge for ' + resource);
-	$.get("http://localhost:8080/" + resource, function(resp) {
-		if (resp.status === 'ok') {
-			chrome.tabs.sendMessage(sender.tab.id, {
-	            action: 'canFancyMerge',
-	            data: resp.canFancyMerge
-	        });
-		}
+function canFancyMerge(port) {
+	var resource = createResourcePath(port.sender);
+	$.get(SERVER_URI + resource, function(resp) {
+		port.postMessage({
+            action: 'canFancyMerge',
+            result: resp
+        });	
 	});
 }
 
-function doFancyMerge(sender) {
-	var resource = createResourcePath(sender);
-	console.log('Checking if can fancy merge for ' + resource);
-	$.get("http://localhost:8080/" + resource, function(resp) {
-		if (resp.status === 'ok') {
-			chrome.tabs.sendMessage(sender.tab.id, {
-	            action: 'canFancyMerge',
-	            data: resp.canFancyMerge
-	        });
-		}
+function doFancyMerge(port, commitMessage) {
+	var resource = createResourcePath(port.sender);
+	var payload = {
+		'commitMessage': commitMessage
+	};
+	$.post(SERVER_URI + resource, payload, function(resp, ignored, jqXHR) {
+		port.postMessage({
+            action: 'doFancyMerge',
+            result: resp,
+            jqXHR: jqXHR
+        });
 	});
 }
 
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+chrome.runtime.onConnectExternal.addListener(function(port) {
+	port.onMessage.addListener(function(request) {
 
-	console.log(request);
+		if (!request.action) {
+			return;
+		}
 
-	if (!request.action) {
-		return;
-	}
-
-	switch (request.action) {
-		case 'canFancyMerge': 
-			canFancyMerge(sender);
-			break;
-	}
+		switch (request.action) {
+			case 'canFancyMerge': 
+				canFancyMerge(port);
+				break;
+			case 'doFancyMerge':
+				doFancyMerge(port, request.commitMessage);
+				break;
+		}
+	});
 });
