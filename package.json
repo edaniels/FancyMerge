@@ -11,6 +11,8 @@
   "dependencies": {
     "express": "^4.12.2",
     "nodegit": "git+ssh://git@github.com:nodegit/nodegit.git",
-    "promise": "^6.1.0"
+    "promise": "^6.1.0",
+    "github": "0.2.3",
+    "body-parser": "*"
   }
 }
