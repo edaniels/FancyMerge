@@ -1,0 +1,22 @@
+{
+  "manifest_version": 2,
+
+  "name": "FancyMerge",
+  "description": "This extension is magic.",
+  "version": "0.1",
+
+  "content_scripts": [
+    {
+      "matches": ["*://github.com/*/*/pull/*"],
+      "js": ["jquery-2.1.3.min.js", "fancyButton.js" ],
+      "run_at": "document_end"  
+    }
+  ],
+
+  "background": {
+    "scripts": ["jquery-2.1.3.min.js", "background.js"],
+    "persistent": false
+  },
+
+  "permissions": ["activeTab", "*://localhost/*"]
+}
