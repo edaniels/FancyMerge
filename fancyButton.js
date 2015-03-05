@@ -37,6 +37,8 @@ function main() {
     var port = chrome.runtime.connect(EXTENSION_ID, {});
 
     var fancyMergeBtn = addButton();
+    if (!fancyMergeBtn)
+        return;
     var classicSubmitBtn = $('.merge-branch-form button:submit').get(0).cloneNode(true);
     var classicDataRemote = $('.merge-branch-form').attr('data-remote');
     var fancySubmitBtn = $(FANCY_SUBMIT_HTML);
