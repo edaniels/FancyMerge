@@ -14,8 +14,8 @@ function GitState(repoName, srcOrg, srcBranch, destOrg, destBranch) {
     this.repo = null;
     this.srcRemote = null;
     this.destRemote = null;
-    this.srcHeadCommitId = null;
-    this.destHeadCommitId = null;
+    this.srcHeadCommit = null;
+    this.destHeadCommit = null;
     this.mergeBaseCommitId = null;
 }
 
@@ -121,26 +121,66 @@ GitState.prototype.setupRemotes = function() {
 GitState.prototype.findMergeBase = function() {
     this.promise = this.promise.then(function() {
         console.log('creating revparse for ' + this.srcOrg + '/' + this.srcBranch + ' and ' + this.destOrg + '/' + this.destBranch);
-        var srcCommitIdPromise = Git.Revparse.single(this.repo, 'refs/remotes/' + this.srcOrg + '/' + this.srcBranch);
-            destCommitIdPromise = Git.Revparse.single(this.repo, 'refs/remotes/' + this.destOrg + '/' + this.destBranch);
+        var srcCommitIdPromise = this.repo.getBranchCommit(this.srcOrg + '/' + this.srcBranch),
+            destCommitIdPromise = this.repo.getBranchCommit(this.destOrg + '/' + this.destBranch);
         return Promise.all([srcCommitIdPromise, destCommitIdPromise]);
     }.bind(this), function(err) { 
         console.log(1);
         console.log(err);
         process.exit();
     }).then(function(commitArray) {
-        this.srcHeadCommitId = commitArray[0];
-        this.destHeadCommitId = commitArray[1];
+        this.srcHeadCommit = commitArray[0];
+        this.destHeadCommit = commitArray[1];
         console.log('getting merge base for');
-        console.log(this.srcHeadCommitId);
-        console.log(this.destHeadcommitId);
-        return Git.Merge.base(this.repo, this.srcHeadCommitId, this.destHeadCommitId);    
+        console.log(this.srcHeadCommit.id().toString());
+        console.log(this.destHeadCommit.id().toString());
+        return Git.Merge.base(this.repo, this.srcHeadCommit.id().toString(), this.destHeadCommit.id().toString());    
     }.bind(this), function(err) {
         console.log(2);
         console.log(err);
     }).then(function(mergeBaseCommitId) {
         this.mergeBaseCommitId = mergeBaseCommitId;
-    }.bind(this), function(err) { throw(err); });
+        console.log('mergebase: ' + mergeBaseCommitId);
+    }.bind(this), function(err) { console.log(3.5); console.log(err); process.exit(); });
+};
+
+GitState.prototype.squashBranch = function(commitMessage) {
+    this.promise = this.promise.then(function() {
+        var checkoutPromise = this.repo.checkoutBranch(this.srcOrg + '/' + this.srcBranch, {
+                checkoutStrategy: Git.Checkout.STRATEGY.FORCE
+            }),
+            commitPromise = this.repo.getCommit(this.mergeBaseCommitId).then(function(mergeBaseCommit) {
+                this.mergeBaseCommit = mergeBaseCommit;
+            }.bind(this));
+        return Promise.all([checkoutPromise, commitPromise]);
+    }.bind(this), function(err) {
+        console.log(3);
+        console.log(err);
+        process.exit();
+    })
+    .then(function() {
+        var resetPromise = Git.Reset.reset(this.repo, this.mergeBaseCommit, Git.Reset.TYPE.SOFT);
+        return Promise.all([resetPromise]);
+    }.bind(this), function(err) {
+        console.log(4);
+        console.log(err);
+        process.exit();
+    })
+    .then(function() {
+        return this.repo.createCommitOnHead([], this.srcHeadCommit.committer(), Git.Signature.default(this.repo), commitMessage);
+    }.bind(this), function(err) {
+        console.log(5);
+        console.log(err);
+        process.exit();
+    })
+    .then(function(commitId) {
+        this.newCommitId = commitId;
+        console.log(commitId);
+    }.bind(this), function(err) {
+        console.log(6);
+        console.log(err);
+        process.exit();
+    });
 };
 
 function verifyIsGitRepository(localPath) {
@@ -156,6 +196,4 @@ var state = new GitState('dummyRepo', 'jrbalsano', 'good', 'jrbalsano', 'master'
 state.loadRepoFromGithub();
 state.setupRemotes();
 state.findMergeBase();
-state.promise.then(function() {
-    console.log('merge base: ' + state.mergeBaseCommitId);
-});
+state.squashBranch('This is a new commit message');
