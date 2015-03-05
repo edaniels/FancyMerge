@@ -43,3 +43,7 @@ node index.js
 # Usage
 
 As long as the server is running and the extension is loaded, simply go to a pull request and use the FancyMerge button instead of the standard button. You may need to refresh to get the button to load.
+
+# TODOs
+
+* Utilize local storage for extension settings
