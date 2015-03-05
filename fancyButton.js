@@ -3,7 +3,7 @@ var NAME = "contentscript";
 window.addEventListener('load', main, false);
 
 function main() {
-    var fancyMergeBtn = $('<button class="button merge-branch-action primary" disabled>FancyMerge</button>');
+    var fancyMergeBtn = $('<button class="button merge-branch-action" disabled><span class="octicon octicon-git-merge"></span>\nFancyMerge</button>');
     fancyMergeBtn.click(function() {
         console.log('sending message');
     });
@@ -16,8 +16,13 @@ function main() {
         }
         
         switch (request.action) {
-            case 'canFancyMerge': 
-                fancyMergeBtn.prop('disabled', request.data);
+            case 'canFancyMerge':
+                fancyMergeBtn.prop('disabled', !request.data);
+                if (request.data) {
+                    fancyMergeBtn.addClass('primary');
+                } else {
+                    fancyMergeBtn.removeClass('primary');
+                }
                 break;
         }
     });
