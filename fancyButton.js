@@ -20,7 +20,7 @@ function main() {
 
     var enabled = !!$('.branch-action-state-clean').length;
     var fancyMergeBtn = 
-        $('<button class="button merge-branch-action" disabled><span class="octicon octicon-git-merge"></span>\nFancyMerge</button>');
+        $('<button class="button merge-branch-action" disabled><span class="octicon octicon-circuit-board"></span>\nFancyMerge</button>');
     fancyMergeBtn.click(function() {
         console.log('sending message');
     });
