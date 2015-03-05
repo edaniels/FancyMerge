@@ -1,7 +1,10 @@
 var _ = require("underscore");
 var bodyParser = require('body-parser');
 var express = require('express');
+var fs = require('fs');
 var GitHubApi = require("github");
+
+var LISTEN_PORT = 3000;
 
 var github = new GitHubApi({
     version: "3.0.0",
@@ -12,10 +15,6 @@ var github = new GitHubApi({
 var app = express();
 
 app.use(bodyParser.json());
-
-app.get('/', function (req, res) {
-  	res.send('Hello World!');
-});
 
 function getPullRequestInfo(org, repo, pr, cb) {
 	github.pullRequests.get({
@@ -64,11 +63,18 @@ app.post('/:org/:repo/:pr', function(req, res){
 	})
 });
 
-var server = app.listen(3000, function () {
+try {
+	var github_creds = JSON.parse(fs.readFileSync('github.json', 'utf8'));
+	github.authenticate(github_creds);
+} catch (ex) {
+	console.log(ex);
+	console.log('Failed to read/parse .github credentials');
+	process.exit();
+}
 
-  var host = server.address().address;
-  var port = server.address().port;
+var server = app.listen(LISTEN_PORT, function () {
 
-  console.log('Example app listening at http://%s:%s', host, port);
-
+	var host = server.address().address;
+	var port = server.address().port;
+	console.log('Fancy server listening at http://%s:%s', host, port);
 });
