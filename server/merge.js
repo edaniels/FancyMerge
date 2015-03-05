@@ -146,11 +146,13 @@ GitState.prototype.findMergeBase = function() {
 
 GitState.prototype.squashBranch = function(commitMessage) {
     this.promise = this.promise.then(function() {
-        var checkoutPromise = this.repo.checkoutBranch(this.srcOrg + '/' + this.srcBranch, {
-                checkoutStrategy: Git.Checkout.STRATEGY.FORCE
-            }),
-            commitPromise = this.repo.getCommit(this.mergeBaseCommitId).then(function(mergeBaseCommit) {
+        var commitPromise = this.repo.getCommit(this.mergeBaseCommitId).then(function(mergeBaseCommit) {
                 this.mergeBaseCommit = mergeBaseCommit;
+            }.bind(this)),
+            checkoutPromise = Git.Branch.create(this.repo, this.srcBranch, this.srcHeadCommit, 1, Git.Signature.default(this.repo), null).then(function() {
+                var err = this.repo.setHead('refs/heads/' + this.srcBranch, Git.Signature.default(this.repo), 'Setting head to ' + this.srcBranch);
+                if (err) { throw(err); }
+                checkoutPromise = Git.Checkout.head(this.repo, { checkoutStrategy: Git.Checkout.STRATEGY.FORCE });
             }.bind(this));
         return Promise.all([checkoutPromise, commitPromise]);
     }.bind(this), function(err) {
@@ -159,8 +161,9 @@ GitState.prototype.squashBranch = function(commitMessage) {
         process.exit();
     })
     .then(function() {
-        var resetPromise = Git.Reset.reset(this.repo, this.mergeBaseCommit, Git.Reset.TYPE.SOFT);
-        return Promise.all([resetPromise]);
+        return Git.Reset.reset(this.repo, this.srcHeadCommit, Git.Reset.TYPE.HARD).then(function() {
+            return Git.Reset.reset(this.repo, this.mergeBaseCommit, Git.Reset.TYPE.SOFT);
+        }.bind(this));
     }.bind(this), function(err) {
         console.log(4);
         console.log(err);
