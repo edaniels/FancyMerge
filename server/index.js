@@ -4,7 +4,7 @@ var express = require('express');
 var fs = require('fs');
 var GitHubApi = require("github");
 
-var LISTEN_PORT = 3000;
+var LISTEN_PORT = 11210;
 
 var github = new GitHubApi({
     version: "3.0.0",
@@ -68,7 +68,7 @@ try {
 	github.authenticate(github_creds);
 } catch (ex) {
 	console.log(ex);
-	console.log('Failed to read/parse .github credentials');
+	console.log('Failed to read/parse github.json credentials');
 	process.exit();
 }
 

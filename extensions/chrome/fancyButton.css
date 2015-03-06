@@ -1,0 +1,14 @@
+.button.primary.fancy-btn {
+	background: linear-gradient(to bottom,  #a9e4f7 0%,#00afe5 100%);
+	border-color: #5ebdc5;
+}
+
+.button.primary.fancy-btn:hover {
+	background: linear-gradient(to bottom,  #a9e4f7 0%,#0098ea 100%);
+	border-color: #5ebdc5;
+}
+
+.button.primary:disabled,.button.primary:disabled:hover {
+	background: linear-gradient(to bottom,  #cfeaf3 0%,#62c9e8 100%);
+	border-color: #9ed8dd;
+}

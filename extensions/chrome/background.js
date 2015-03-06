@@ -3,7 +3,7 @@ var ORGANIZATION_INDEX = 1;
 var REPOSITORY_INDEX = 2;
 var PULL_REQUEST_INDEX = 4;
 
-var SERVER_URI = "http://localhost:8080/";
+var SERVER_URI = "http://localhost:11210/";
 
 function createResourcePath(sender) {
 	var senderUrl = document.createElement('a');

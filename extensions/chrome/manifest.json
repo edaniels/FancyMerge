@@ -20,7 +20,7 @@
 
   "permissions": ["activeTab", "*://localhost/*"],
 
-  "web_accessible_resources": ["fancyButton.js"],
+  "web_accessible_resources": ["fancyButton.js", "fancyButton.css"],
 
   "externally_connectable": {
     "matches": ["*://github.com/*/*/pull/*"]
