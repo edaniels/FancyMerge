@@ -55,3 +55,14 @@ chrome.runtime.onConnectExternal.addListener(function(port) {
 		}
 	});
 });
+
+chrome.runtime.onInstalled.addListener(function() {
+	chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
+		chrome.declarativeContent.onPageChanged.addRules([{
+	    	conditions: [ new chrome.declarativeContent.PageStateMatcher({
+	      		css: [".repo-container"]}
+      		)],
+			actions: [new chrome.declarativeContent.ShowPageAction()]
+    	}]);
+  	});
+});

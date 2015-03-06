@@ -31,3 +31,5 @@ repos
 
 # Ignore github credentials
 github.json
+
+.DS_Store
