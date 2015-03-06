@@ -28,7 +28,7 @@ function submitInterceptor(e, port) {
     e.preventDefault();
     port.postMessage({
         action: 'doFancyMerge',
-        commitMessage: $('.merge-branch-form .merge-commit-message').text()
+        commitMessage: $('.merge-branch-form .merge-commit-message').val()
     })
 }
 
