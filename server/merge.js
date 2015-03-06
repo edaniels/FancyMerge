@@ -3,7 +3,7 @@ var fs = require('fs');
 var path = require('path');
 var Promise = require('promise');
 
-function GitState(repoName, srcOrg, srcBranch, destOrg, destBranch) {
+function PullRequest(repoName, srcOrg, srcBranch, destOrg, destBranch) {
     this.repoName = repoName;
     this.srcOrg = srcOrg;
     this.srcBranch = srcBranch;
@@ -16,17 +16,85 @@ function GitState(repoName, srcOrg, srcBranch, destOrg, destBranch) {
     this.destRemote = null;
     this.srcHeadCommit = null;
     this.destHeadCommit = null;
-    this.mergeBaseCommitId = null;
+    this.mergeBaseCommit = null;
+    this.squashCommit = null;
+    this.rebasedCommit = null;
 }
 
-GitState.getUrlForOrganization = function(organization, repo) {
+PullRequest.prototype.fancyMerge = function(commitMessage) {
+    return this._loadRepo()
+    
+    // Setup Remotes
+    .then(function() {
+        console.log('setting up remotes');
+        return this._setupRemote(this.srcOrg, this.srcBranch).catch(function(reason) { console.log('1 ' + reason); });
+    }.bind(this))
+    .then(function(remote) {
+        this.srcRemote = remote;
+        return this._setupRemote(this.destOrg, this.destBranch).catch(function(reason) { console.log('1 ' + reason); });
+    }.bind(this))
+    .then(function(remote) {
+        this.destRemote = remote;
+        return this._fetchRemotes().catch(function(reason) { console.log('1 ' + reason); });
+    }.bind(this))
+
+    // Determine the Merge Base
+    .then(function() {
+        console.log('determining merge base');
+        this._findRemoteCommits().catch(function(reason) { console.log('1 ' + reason); });
+        return this._findMergeBase().catch(function(reason) { console.log('1 ' + reason); });
+    }.bind(this))
+
+    // Squash Src Branch into squashCommit
+    .then(function() {
+        console.log('sqashing');
+        this._forceCreateBranchFromCommit(this.srcBranch, this.srcHeadCommit).catch(function(reason) { console.log('1 ' + reason); });
+        this._forceCheckoutBranch(this.srcBranch).catch(function(reason) { console.log('1 ' + reason); });
+        this._softResetToCommit(this.mergeBaseCommit).catch(function(reason) { console.log('1 ' + reason); });
+        return this._commitIndexToHead(commitMessage, this.srcHeadCommit.author());
+    }.bind(this))
+    .then(function(commit) {
+        this.squashCommit = commit;
+    }.bind(this))
+
+    // Cherrypick squashCommit onto Dest Branch
+    .then(function() {
+        console.log('cherrypick');
+        this._forceCreateBranchFromCommit(this.destBranch, this.destHeadCommit).catch(function(reason) { console.log('1 ' + reason); });
+        this._forceCheckoutBranch(this.destBranch).catch(function(reason) { console.log('1 ' + reason); });
+        this._cherrypickCommitOntoIndexAndWorkspace(this.squashCommit).catch(function(reason) { console.log('1 ' + reason); });
+        return this._commitIndexToHead(commitMessage, this.squashCommit.author()).catch(function(reason) { console.log('1 ' + reason); });
+    }.bind(this))
+    .then(function(commit) {
+        this.rebasedCommit = commit;
+    }.bind(this))
+
+    // Sync Dest Branch to Src Branch and push back up
+    .then(function() {
+        console.log('pushing');
+        this._forceCreateBranchFromCommit(this.srcBranch, this.rebasedCommit).catch(function(reason) { console.log('1 ' + reason); });
+        this._pushBranchToRemote(this.srcBranch, this.srcRemote, true).catch(function(reason) { console.log('1 ' + reason); });
+        return this._pushBranchToRemote(this.destBranch, this.destRemote, false).catch(function(reason) { console.log('1 ' + reason); });
+    }.bind(this));
+};
+
+PullRequest.getUrlForOrganization = function(organization, repo) {
     return 'git@github.com:' + organization + '/' + repo + '.git';
 };
 
-GitState.prototype.loadRepoFromGithub = function() {
+PullRequest.prototype._verifyLocalGitRepository = function(localPath) {
+    try {
+        var stats = fs.lstatSync(localPath + '/.git');
+        return stats.isDirectory();
+    } catch(e) {
+        return false;
+    }
+};
+
+PullRequest.prototype._loadRepo = function() {
     var repoPath = 'repos/' + this.destOrg + '/' + this.repoName,
         localPath = path.join(__dirname, repoPath),
-        alreadyCloned = verifyIsGitRepository(localPath),
+        alreadyCloned = this._verifyLocalGitRepository(localPath),
         cloneOptions = {};
 
     cloneOptions.remoteCallbacks = {
@@ -42,16 +110,17 @@ GitState.prototype.loadRepoFromGithub = function() {
     if (alreadyCloned) {
         repoPromise = Git.Repository.open(localPath);
     } else {
-        repoPromise = Git.Clone.clone(GitState.getUrlForOrganization(this.destOrg, this.repoName), localPath, cloneOptions);
+        repoPromise = Git.Clone.clone(PullRequest.getUrlForOrganization(this.destOrg, this.repoName), localPath, cloneOptions);
     }
     this.promise = repoPromise.then(function(repo) {
         this.repo = repo;
     }.bind(this), function(err) {
         throw err;
     });
+    return this.promise;
 };
 
-GitState.prototype.setupRemotes = function() {
+PullRequest.prototype._setupRemote = function(organization, branch) {
     if (!this.promise) {
         throw Error('No promise is defined. loadRepoFromGithub first');
     }
@@ -59,40 +128,27 @@ GitState.prototype.setupRemotes = function() {
     this.promise = this.promise.then(function() {
         if (!this.repo) {
             throw Error('No repo defined');
-        } else if (this.srcRemote || this.destRemote) {
-            throw Error('Some remotes have already been loaded');
         }
         return Git.Remote.list(this.repo);
     }.bind(this))
     .then(function(remoteList) {
-        var srcPromise;
-        if (remoteList.indexOf(this.srcOrg) < 0) {
-            srcPomise = Git.Remote.create(this.repo, this.srcOrg, GitState.getUrlForOrganization(this.srcOrg, this.repoName));
+        var remotePromise;
+        if (remoteList.indexOf(organization) < 0) {
+            remotePromise = Git.Remote.create(this.repo, organization, PullRequest.getUrlForOrganization(organization, this.repoName));
         } else {
-            srcPromise = Git.Remote.lookup(this.repo, this.srcOrg, null);
+            remotePromise = Git.Remote.lookup(this.repo, organization, null);
         }
-        return srcPromise;
-        
+        return remotePromise;
     }.bind(this), function(err) {
         console.log(0);
         console.log(err);
         process.exit();
-    })
-    .then(function(srcRemote) {
-        this.srcRemote = srcRemote; 
-        return Git.Remote.list(this.repo);
-    }.bind(this))
-    .then(function(remoteList) {
-        var destPromise;
-        if (remoteList.indexOf(this.destOrg) < 0) {
-            destPromise = Git.Remote.create(this.repo, this.destOrg, GitState.getUrlForOrganization(this.destOrg, this.repoName));
-        } else {
-            destPromise = Git.Remote.lookup(this.repo, this.destOrg, null);
-        }
-        return destPromise;
-    }.bind(this))
-    .then(function(destRemote) {
-        this.destRemote = destRemote;
+    });
+    return this.promise;
+};
+
+PullRequest.prototype._fetchRemotes = function() {
+    this.promise = this.promise.then(function(destRemote) {
         remoteCallbacks = {};
 
         remoteCallbacks = {
@@ -104,7 +160,11 @@ GitState.prototype.setupRemotes = function() {
         this.srcRemote.setCallbacks(remoteCallbacks);
         this.destRemote.setCallbacks(remoteCallbacks);
         return this.srcRemote.fetch(null, Git.Signature.default(this.repo), null);
-    }.bind(this))
+    }.bind(this), function(err) {
+        console.log(0.3);
+        console.log(err);
+        process.exit();
+    })
     .then(function() {
         if (this.srcOrg !== this.destOrg) {
             return this.destRemote.fetch(null, Git.Signature.default(this.repo), null);
@@ -116,9 +176,10 @@ GitState.prototype.setupRemotes = function() {
         console.log(err);
         process.exit();
     });
+    return this.promise;
 };
 
-GitState.prototype.findMergeBase = function() {
+PullRequest.prototype._findRemoteCommits = function() {
     this.promise = this.promise.then(function() {
         console.log('creating revparse for ' + this.srcOrg + '/' + this.srcBranch + ' and ' + this.destOrg + '/' + this.destBranch);
         var srcCommitIdPromise = this.repo.getBranchCommit(this.srcOrg + '/' + this.srcBranch),
@@ -128,75 +189,85 @@ GitState.prototype.findMergeBase = function() {
         console.log(1);
         console.log(err);
         process.exit();
-    }).then(function(commitArray) {
+    })
+    .then(function(commitArray) {
         this.srcHeadCommit = commitArray[0];
         this.destHeadCommit = commitArray[1];
-        console.log('getting merge base for');
-        console.log(this.srcHeadCommit.id().toString());
-        console.log(this.destHeadCommit.id().toString());
+    }.bind(this), function(err) {
+        console.log(2);
+        console.log(err);
+    });
+    return this.promise;
+};
+
+PullRequest.prototype._findMergeBase = function() {
+    this.promise = this.promise.then(function() {
         return Git.Merge.base(this.repo, this.srcHeadCommit.id().toString(), this.destHeadCommit.id().toString());    
     }.bind(this), function(err) {
         console.log(2);
         console.log(err);
     }).then(function(mergeBaseCommitId) {
-        this.mergeBaseCommitId = mergeBaseCommitId;
-        console.log('mergebase: ' + mergeBaseCommitId);
+        return this.repo.getCommit(mergeBaseCommitId);
+    }.bind(this))
+    .then(function(mergeBaseCommit) {
+        this.mergeBaseCommit = mergeBaseCommit;
     }.bind(this), function(err) { console.log(3.5); console.log(err); process.exit(); });
+    return this.promise;
 };
 
-GitState.prototype.squashBranch = function(commitMessage) {
+PullRequest.prototype._forceCreateBranchFromCommit = function(branchName, commit) {
     this.promise = this.promise.then(function() {
-        var commitPromise = this.repo.getCommit(this.mergeBaseCommitId).then(function(mergeBaseCommit) {
-                this.mergeBaseCommit = mergeBaseCommit;
-            }.bind(this)),
-            checkoutPromise = Git.Branch.create(this.repo, this.srcBranch, this.srcHeadCommit, 1, Git.Signature.default(this.repo), null).then(function() {
-                var err = this.repo.setHead('refs/heads/' + this.srcBranch, Git.Signature.default(this.repo), 'Setting head to ' + this.srcBranch);
-                if (err) { throw(err); }
-                checkoutPromise = Git.Checkout.head(this.repo, { checkoutStrategy: Git.Checkout.STRATEGY.FORCE });
-            }.bind(this));
-        return Promise.all([checkoutPromise, commitPromise]);
-    }.bind(this), function(err) {
-        console.log(3);
-        console.log(err);
-        process.exit();
-    })
-    .then(function() {
-        return Git.Reset.reset(this.repo, this.srcHeadCommit, Git.Reset.TYPE.HARD).then(function() {
-            return Git.Reset.reset(this.repo, this.mergeBaseCommit, Git.Reset.TYPE.SOFT);
-        }.bind(this));
-    }.bind(this), function(err) {
-        console.log(4);
-        console.log(err);
-        process.exit();
-    })
-    .then(function() {
-        return this.repo.createCommitOnHead([], this.srcHeadCommit.committer(), Git.Signature.default(this.repo), commitMessage);
-    }.bind(this), function(err) {
-        console.log(5);
-        console.log(err);
-        process.exit();
-    })
-    .then(function(commitId) {
-        this.newCommitId = commitId;
-        console.log(commitId);
-    }.bind(this), function(err) {
-        console.log(6);
-        console.log(err);
-        process.exit();
-    });
+        console.log('forceCreateBranchFromCommit');
+        return Git.Branch.create(this.repo, branchName, commit, 1, Git.Signature.default(this.repo), null);
+    }.bind(this));
+    return this.promise;
 };
 
-function verifyIsGitRepository(localPath) {
-    try {
-        var stats = fs.lstatSync(localPath + '/.git');
-        return stats.isDirectory();
-    } catch(e) {
-        return false;
-    }
-}
+PullRequest.prototype._forceCheckoutBranch = function(branchName) {
+    this.promise = this.promise.then(function() {
+        console.log('forceCheckoutBranch');
+        return this.repo.checkoutBranch('refs/heads/' + branchName, { checkoutStrategy: Git.Checkout.STRATEGY.FORCE });
+    }.bind(this));
+    return this.promise;
+};
 
-var state = new GitState('dummyRepo', 'jrbalsano', 'good', 'jrbalsano', 'master');
-state.loadRepoFromGithub();
-state.setupRemotes();
-state.findMergeBase();
-state.squashBranch('This is a new commit message');
+PullRequest.prototype._softResetToCommit = function(commit) {
+    this.promise = this.promise.then(function() {
+        console.log('softReset');
+        return Git.Reset.reset(this.repo, commit, Git.Reset.TYPE.SOFT);
+    }.bind(this));
+    return this.promise;
+};
+
+PullRequest.prototype._commitIndexToHead = function(commitMessage, author) {
+    this.promise = this.promise.then(function() {
+        console.log('committing');
+        return this.repo.createCommitOnHead([], author, Git.Signature.default(this.repo), commitMessage);
+    }.bind(this))
+    .then(function(commitId) {
+        console.log('gettingCommit');
+        return this.repo.getCommit(commitId);
+    }.bind(this));
+    return this.promise;
+};
+
+PullRequest.prototype._cherrypickCommitOntoIndexAndWorkspace = function(commit) {
+    this.promise = this.promise.then(function() {
+        var cpOptions = new Git.CherrypickOptions();
+        return Git.Cherrypick.cherrypick(this.repo, commit, cpOptions);
+    }.bind(this));
+    return this.promise;
+};
+
+PullRequest.prototype._pushBranchToRemote = function(branchName, remote, force) {
+    this.promise = this.promise.then(function() {
+        var refspec = 'refs/heads/' + branchName + ':refs/heads/' + branchName;
+        if (force) {
+            refspec = '+' + refspec;
+        }
+        return remote.push([refspec], null, Git.Signature.default(this.repo), 'Push to ' + remote.name() + '/' + branchName);
+    }.bind(this));
+    return this.promise;
+};
+
+module.exports = PullRequest;
