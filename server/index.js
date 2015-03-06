@@ -57,8 +57,15 @@ app.post('/:org/:repo/:pr', function(req, res){
 		} else {
             var pullRequest = new PullRequest(pr.head.repo, pr.head.org, pr.head.branch, pr.base.org, pr.base.branch);
             pullRequest.fancyMerge(req.body.commitMessage).then(function() {
+            	setTimeout(function() {
+            		res.json({
+				        'status': 'ok'
+				    });
+            	}, 2000);
+            }, function(err) {
             	res.json({
-			        'status': 'ok'
+			        'status': 'err',
+			        'error': err.message
 			    });
             });
 		}
