@@ -2,7 +2,8 @@ var _ = require("underscore");
 var bodyParser = require('body-parser');
 var express = require('express');
 var fs = require('fs');
-var GitHubApi = require("github");
+var GitHubApi = require('github');
+var PullRequest = require('merge');
 
 var LISTEN_PORT = 11210;
 
@@ -54,13 +55,15 @@ app.post('/:org/:repo/:pr', function(req, res){
 		        'error': JSON.parse(err.message).message
 		    });
 		} else {
+            var pullRequest = new PullRequest(pr.base.org, pr.head.org, pr.head.branch, pr.base.org, pr.base.branch);
+            pullRequest.fancyMerge();
 
 			// Do fancy merge now
 			res.json({
 		        'status': 'ok'
 		    });
 		}
-	})
+	});
 });
 
 try {
