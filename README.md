@@ -1,6 +1,9 @@
 # FancyMerge
 
-FancyMerge extends the GitHub pull request page to support a "fancy merge". This type of merge comes from the following example:
+## Motivation
+FancyMerge extends the GitHub pull request page to support a "fancy merge". A fancy merge is the equivalent of `git merge --squash` but it also updates the source branch. The benefits of this method are that feature branches are merged into master as a single commit at the tip, giving a linear commit history while still keeping GitHub informed on the state of the branch. This means you can retain a linear commit history without having to manually close or update your pull requests.
+
+This type of merge comes from the following example:
 
 1. Create new branch, feature_octopus, off of master
 2. Do work and commit
@@ -9,6 +12,14 @@ FancyMerge extends the GitHub pull request page to support a "fancy merge". This
 5. Force push new branch
 6. Checkout master
 7. Merge feature_octopus into master; will fast-forward
+
+## Components
+
+FancyMerge is made up of a chrome extension and a node.js server.
+
+The chrome extension adds controls to enable FancyMerge on the current repo to your chrome url bar. If enabled for a repo, will replace the merge button on pull requests with a fancy merge button and give you the option to enter a commit message for the commit created by the FancyMerge.
+
+The node.js server listens for POST requests with information about a pull request. It uses the github API to find the pull request using the credentials provided during installation. Once it has identified the necessary components of the pull request it will perform the FancyMerge and push the results to github if it succeeds using your local ssh-agent credentials.
 
 # Installation
 
