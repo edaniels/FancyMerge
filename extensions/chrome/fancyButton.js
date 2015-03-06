@@ -1,5 +1,5 @@
-var FANCY_BTN_HTML = '<button class="button merge-branch-action js-details-target"><span class="octicon octicon-circuit-board"></span>\nFancyMerge</button>';
-var FANCY_SUBMIT_HTML = '<button type="submit" class="button primary" data-disable-with="Fancifying..."><span class="octicon octicon-circuit-board"></span>\nConfirm fancyMerge</button>';
+var FANCY_BTN_HTML = '<button class="button merge-branch-action js-details-target fancy-btn"><span class="octicon octicon-circuit-board"></span>\nFancyMerge</button>';
+var FANCY_SUBMIT_HTML = '<button type="submit" class="button primary fancy-btn" data-disable-with="Fancifying..."><span class="octicon octicon-circuit-board"></span>\nConfirm fancyMerge</button>';
 var EXTENSION_ID = $('#fancybuttonid').text();
 main();
 
