@@ -3,7 +3,7 @@ var bodyParser = require('body-parser');
 var express = require('express');
 var fs = require('fs');
 var GitHubApi = require('github');
-var PullRequest = require('merge');
+var PullRequest = require('./merge');
 
 var LISTEN_PORT = 11210;
 
@@ -15,7 +15,7 @@ var github = new GitHubApi({
 });
 var app = express();
 
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 function getPullRequestInfo(org, repo, pr, cb) {
 	github.pullRequests.get({
@@ -55,13 +55,12 @@ app.post('/:org/:repo/:pr', function(req, res){
 		        'error': JSON.parse(err.message).message
 		    });
 		} else {
-            var pullRequest = new PullRequest(pr.base.org, pr.head.org, pr.head.branch, pr.base.org, pr.base.branch);
-            pullRequest.fancyMerge();
-
-			// Do fancy merge now
-			res.json({
-		        'status': 'ok'
-		    });
+            var pullRequest = new PullRequest(pr.head.repo, pr.head.org, pr.head.branch, pr.base.org, pr.base.branch);
+            pullRequest.fancyMerge(req.body.commitMessage).then(function() {
+            	res.json({
+			        'status': 'ok'
+			    });
+            });
 		}
 	});
 });
