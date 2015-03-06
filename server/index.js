@@ -68,7 +68,7 @@ try {
 	github.authenticate(github_creds);
 } catch (ex) {
 	console.log(ex);
-	console.log('Failed to read/parse .github credentials');
+	console.log('Failed to read/parse github.json credentials');
 	process.exit();
 }
 
