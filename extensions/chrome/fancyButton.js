@@ -19,7 +19,8 @@ function addMergeButton() {
     var enabled = !!$('.branch-action-state-clean').length;
     var fancyMergeBtn = $(FANCY_BTN_HTML);
     toggle(fancyMergeBtn, enabled);
-    $('.merge-branch-action').replaceWith(fancyMergeBtn);
+    $('.branch-action-state-clean .merge-message .merge-branch-action, .branch-action-state-dirty .merge-message .merge-branch-action')
+        .replaceWith(fancyMergeBtn);
     return fancyMergeBtn;
 }
 
@@ -36,7 +37,7 @@ function setupButtons(port) {
     var fancySubmitBtn = $(FANCY_SUBMIT_HTML);
     $('.merge-branch-form').removeAttr('data-remote');
     $('.merge-branch-form').on('submit', function(e) { submitInterceptor(e, port) });
-    $('.merge-branch-form button:submit').replaceWith(fancySubmitBtn);
+    $('.commit-form-actions button:submit').replaceWith(fancySubmitBtn);
 }
 
 function main() {

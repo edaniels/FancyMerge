@@ -63,6 +63,7 @@ app.post('/:org/:repo/:pr', function(req, res){
 				    });
             	}, 2000);
             }, function(err) {
+            	console.log(err);
             	res.json({
 			        'status': 'err',
 			        'error': err.message
