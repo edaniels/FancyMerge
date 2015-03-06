@@ -66,6 +66,7 @@ PullRequest.prototype.fancyMerge = function(commitMessage) {
         this._forceCreateBranchFromCommit(this.destBranch, this.destHeadCommit, PullRequest.DEST_PREFIX);
         this._forceCheckoutBranch(this.destBranch, PullRequest.DEST_PREFIX);
         this._cherrypickCommitOntoIndexAndWorkspace(this.squashCommit);
+        this._failIfIndexHasConflicts();
         return this._commitIndexToHead(commitMessage, this.squashCommit.author());
     }.bind(this))
     .then(function(commit) {
@@ -77,6 +78,7 @@ PullRequest.prototype.fancyMerge = function(commitMessage) {
         console.log('==PUSH==');
         this._forceCreateBranchFromCommit(this.srcBranch, this.rebasedCommit, PullRequest.SRC_PREFIX).catch(function(reason) { console.log('1 ' + reason); });
         this._pushBranchToRemote(this.srcBranch, this.srcRemote, true, PullRequest.SRC_PREFIX).catch(function(reason) { console.log('1 ' + reason); });
+        this._wait(1000); // Wait one second to give github a chance to record changes to source
         return this._pushBranchToRemote(this.destBranch, this.destRemote, false, PullRequest.DEST_PREFIX).catch(function(reason) { console.log('1 ' + reason); });
     }.bind(this));
 };
@@ -92,6 +94,18 @@ PullRequest.prototype._verifyLocalGitRepository = function(localPath) {
     } catch(e) {
         return false;
     }
+};
+
+PullRequest.prototype._wait = function(ms) {
+    this.promise = this.promise.then(function() {
+        console.log('wait ' + ms + 'ms');
+        return new Promise(function(resolve, reject) {
+            setTimeout(function() {
+                resolve();
+            }, ms);
+        });
+    });
+    return this.promise;
 };
 
 PullRequest.prototype._loadRepo = function() {
@@ -268,6 +282,18 @@ PullRequest.prototype._cherrypickCommitOntoIndexAndWorkspace = function(commit) 
         var cpOptions = new Git.CherrypickOptions();
         console.log('cherrypicking ' + commit.id().toString() + ' onto index and workspace');
         return Git.Cherrypick.cherrypick(this.repo, commit, cpOptions);
+    }.bind(this));
+    return this.promise;
+};
+
+PullRequest.prototype._failIfIndexHasConflicts = function() {
+    this.promise = this.promise.then(function() {
+        return this.repo.index();
+    }.bind(this))
+    .then(function(index) {
+        if (index.hasConflicts()) {
+            reject('Operation generated a conflict in the index');
+        }
     }.bind(this));
     return this.promise;
 };
