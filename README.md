@@ -17,7 +17,7 @@ This type of merge comes from the following example:
 
 FancyMerge is made up of a chrome extension and a node.js server.
 
-The chrome extension adds controls to enable FancyMerge on the current repo to your chrome url bar. If enabled for a repo, will replace the merge button on pull requests with a fancy merge button and give you the option to enter a commit message for the commit created by the FancyMerge.
+The chrome extension adds controls to enable FancyMerge on the current repo to your chrome url bar. If enabled for a repo, it will replace the merge button on pull requests with a fancy merge button and give you the option to enter a commit message for the commit created by the FancyMerge.
 
 The node.js server listens for POST requests with information about a pull request. It uses the github API to find the pull request using the credentials provided during installation. Once it has identified the necessary components of the pull request it will perform the FancyMerge and push the results to github if it succeeds using your local ssh-agent credentials.
 
@@ -54,7 +54,3 @@ node index.js
 # Usage
 
 As long as the server is running and the extension is loaded, simply go to a pull request and use the FancyMerge button instead of the standard button. You may need to refresh to get the button to load.
-
-# TODOs
-
-* Utilize local storage for extension settings
