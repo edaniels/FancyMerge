@@ -26,7 +26,7 @@ The node.js server listens for POST requests with information about a pull reque
 ## Server
 Go into the server directory:
 
-Create a file called github.json and fill it in with your github credentials:
+Create a file in ~/.fancymerge called github.json and fill it in with your github credentials:
 
 ```json
 {
@@ -42,6 +42,16 @@ Running the server is simple:
 npm install
 node index.js
 ```
+
+### OSX Installation
+The FancyMerge server runs as a launchd daemon
+
+```bash
+cd scripts/osx
+make install
+```
+
+Log in and out and the server will run with logging to ~/.fancymerge/server.log
 
 ## Chrome Extension
 
