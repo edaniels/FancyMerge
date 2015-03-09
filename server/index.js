@@ -1,10 +1,14 @@
+#!/usr/local/bin/node
+
 var _ = require("underscore");
 var bodyParser = require('body-parser');
 var express = require('express');
 var fs = require('fs');
 var GitHubApi = require('github');
+var path = require('path');
 var PullRequest = require('./merge');
 
+var LISTEN_HOST = 'localhost';
 var LISTEN_PORT = 11210;
 
 var github = new GitHubApi({
@@ -63,7 +67,6 @@ app.post('/:org/:repo/:pr', function(req, res){
 				    });
             	}, 2000);
             }, function(err) {
-            	console.log(err);
             	res.json({
 			        'status': 'err',
 			        'error': err.message
@@ -74,7 +77,8 @@ app.post('/:org/:repo/:pr', function(req, res){
 });
 
 try {
-	var github_creds = JSON.parse(fs.readFileSync('github.json', 'utf8'));
+	var creds_path = path.join(process.env.HOME, '.fancymerge', 'github.json');
+	var github_creds = JSON.parse(fs.readFileSync(creds_path, 'utf8'));
 	github.authenticate(github_creds);
 } catch (ex) {
 	console.log(ex);
@@ -82,7 +86,7 @@ try {
 	process.exit();
 }
 
-var server = app.listen(LISTEN_PORT, function () {
+var server = app.listen(LISTEN_PORT, LISTEN_HOST, function () {
 
 	var host = server.address().address;
 	var port = server.address().port;
