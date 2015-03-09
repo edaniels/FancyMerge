@@ -12,14 +12,14 @@ function toggle(target, val) {
 }
 
 function shouldShow() {
-    return !!$('.branch-action-state-clean, .branch-action-state-dirty').length;
+    return !!$('.branch-action-state-clean, .branch-action-state-dirty, .branch-action-state-unstable').length;
 }
 
 function addMergeButton() {
     var enabled = !!$('.branch-action-state-clean').length;
     var fancyMergeBtn = $(FANCY_BTN_HTML);
     toggle(fancyMergeBtn, enabled);
-    $('.branch-action-state-clean .merge-message .merge-branch-action, .branch-action-state-dirty .merge-message .merge-branch-action')
+    $('.branch-action-state-clean, .branch-action-state-dirty, .branch-action-state-unstable').find('.merge-message .merge-branch-action')
         .replaceWith(fancyMergeBtn);
     return fancyMergeBtn;
 }
