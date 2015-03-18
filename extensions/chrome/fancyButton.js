@@ -1,6 +1,8 @@
 var FANCY_BTN_HTML = '<button class="button merge-branch-action js-details-target fancy-btn"><span class="octicon octicon-circuit-board"></span>\nFancyMerge</button>';
 var FANCY_SUBMIT_HTML = '<button type="submit" class="button primary fancy-btn" data-disable-with="Fancifying..."><span class="octicon octicon-circuit-board"></span>\nConfirm fancyMerge</button>';
+var FILL_COMMITS_HTML = '<hr/><button class="button secondary"><span class="octicon octicon-circuit-board"></span>\nReplace Message with Combined Commits</button>';
 var EXTENSION_ID = $('#fancybuttonid').text();
+var NEW_LINE = '\n';
 
 function toggle(target, val) {
     target.prop('disabled', !val);
@@ -38,6 +40,37 @@ function setupButtons(port) {
     $('.merge-branch-form').removeAttr('data-remote');
     $('.merge-branch-form').on('submit', function(e) { submitInterceptor(e, port) });
     $('.commit-form-actions button:submit').replaceWith(fancySubmitBtn);
+
+    // Skip for single commit PRs
+    if (getCommitMessages().length === 1) {
+        return;
+    }
+
+    var fillCommitsBtn = $(FILL_COMMITS_HTML);
+    fillCommitsBtn.on('click', function(e) {
+        e.preventDefault();
+        var commitMessages = getCommitMessages();
+        var newCommitMessage = $('.js-issue-title').text() + NEW_LINE + formatCommitMessages(commitMessages);
+        $('.merge-branch-form .merge-commit-message').val(newCommitMessage);
+    });
+    fillCommitsBtn.insertAfter('.commit-form-actions');
+}
+
+function formatCommitMessages(commitMessages) {
+    var result = '';
+    $.each(commitMessages, function(idx, message) {
+        result += NEW_LINE + '- ' + message;
+    });
+    return result;
+}
+
+function getCommitMessages() {
+    var result = []
+    var commitMessages = $('.commits-listing .commit .message');
+    $.each(commitMessages, function(idx, message) {
+        result.push(message.textContent);
+    })
+    return result;
 }
 
 function main() {
