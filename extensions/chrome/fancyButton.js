@@ -1,4 +1,4 @@
-var FANCY_BTN_HTML = '<button class="btn merge-branch-action js-details-target fancy-btn"><span class="octicon octicon-circuit-board"></span>\nFancyMerge</button>';
+var FANCY_BTN_HTML = '<button class="btn merge-branch-action js-merge-branch-action fancy-btn"><span class="octicon octicon-circuit-board"></span>\nFancyMerge</button>';
 var FANCY_SUBMIT_HTML = '<button type="submit" class="btn btn-primary fancy-btn" data-disable-with="Fancifying..."><span class="octicon octicon-circuit-board"></span>\nConfirm fancyMerge</button>';
 var FILL_COMMITS_HTML = '<hr/><button class="btn btn-secondary"><span class="octicon octicon-circuit-board"></span>\nReplace Message with Combined Commits</button>';
 var EXTENSION_ID = $('#fancybuttonid').text();
