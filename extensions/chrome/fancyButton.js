@@ -21,7 +21,7 @@ function addMergeButton() {
     var enabled = !!$('.branch-action-state-clean').length;
     var fancyMergeBtn = $(FANCY_BTN_HTML);
     toggle(fancyMergeBtn, enabled);
-    $('.branch-action-state-clean, .branch-action-state-dirty, .branch-action-state-unstable').find('.merge-message .merge-branch-action')
+    $('.branch-action-state-clean, .branch-action-state-dirty, .branch-action-state-unstable').find('.merge-message .merge-branch-action,.js-merge-branch-action')
         .replaceWith(fancyMergeBtn);
     return fancyMergeBtn;
 }
