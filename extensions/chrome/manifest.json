@@ -7,7 +7,9 @@
 
   "page_action" :
   {
-    "default_icon": "images/icon-19.png",
+    "default_icon": {
+      "19": "images/icon-19.png"
+    },
     "default_title": "FancyMerge Options",
     "default_popup": "popup.html"
   },
