@@ -1,7 +1,6 @@
 var fs = require('fs');
 var Git = require('nodegit');
 var path = require('path');
-var Promise = require('promise');
 
 function PullRequest(repoName, srcOrg, srcBranch, destOrg, destBranch) {
     this.repoName = repoName;
@@ -29,7 +28,7 @@ PullRequest.DEST_PREFIX = 'dest-';
 
 PullRequest.prototype.fancyMerge = function(commitMessage) {
     return this._loadRepo()
-    
+
     // Setup Remotes
     .then(function() {
         console.log('==REMOTE SETUP==');
@@ -99,7 +98,7 @@ PullRequest.translateError = function(error) {
     }
 
     return error;
-}
+};
 
 PullRequest.getUrlForOrganization = function(organization, repo) {
     return 'git@github.com:' + organization + '/' + repo + '.git';
@@ -127,18 +126,17 @@ PullRequest.prototype._wait = function(ms) {
 };
 
 PullRequest.prototype._loadRepo = function() {
-    var repoPath = 'repos/' + this.destOrg + '/' + this.repoName,
-        localPath = path.join(__dirname, repoPath),
-        alreadyCloned = this._verifyLocalGitRepository(localPath),
-        cloneOptions = {};
+    var repoPath = 'repos/' + this.destOrg + '/' + this.repoName;
+    var localPath = path.join(__dirname, repoPath);
+    var alreadyCloned = this._verifyLocalGitRepository(localPath);
+    var cloneOptions = new Git.CloneOptions();
+    var fetchOptions = new Git.FetchOptions();
 
-    cloneOptions.remoteCallbacks = {
-        certificateCheck: function() { return 1; },
-        credentials: function(url, userName) {
-            return Git.Cred.sshKeyFromAgent(userName);
-        }
+    fetchOptions.callbacks.certificateCheck = function() { return 1; };
+    fetchOptions.callbacks.credentials = function(url, userName) {
+        return Git.Cred.sshKeyFromAgent(userName);
     };
-
+    cloneOptions.fetchOpts = fetchOptions;
     localPath = path.join(__dirname, repoPath);
     if (alreadyCloned) {
         console.log('Opening repo at ' + localPath);
@@ -182,27 +180,21 @@ PullRequest.prototype._setupRemote = function(organization, branch) {
 };
 
 PullRequest.prototype._fetchRemotes = function() {
+    var fetchOptions = new Git.FetchOptions();
+    fetchOptions.callbacks.certificateCheck = function() { return 1; };
+    fetchOptions.callbacks.credentials = function(url, userName) {
+        return Git.Cred.sshKeyFromAgent(userName);
+    };
+
     this.promise = this.promise.then(function(destRemote) {
         this.currentStage = 0.3;
-        remoteCallbacks = {};
-
-        remoteCallbacks = {
-            certificateCheck: function() { return 1; },
-            credentials: function(url, userName) {
-                return Git.Cred.sshKeyFromAgent(userName);
-            }
-        };
-        this.srcRemote.setCallbacks(remoteCallbacks);
-        this.destRemote.setCallbacks(remoteCallbacks);
         console.log('Fetching from src remote ' + this.srcRemote.name());
-        return this.srcRemote.fetch(null, Git.Signature.default(this.repo), null);
-    }.bind(this))
-
-    .then(function() {
+        return this.srcRemote.fetch(null, fetchOptions, Git.Signature.default(this.repo));
+    }.bind(this)).then(function() {
         this.currentStage = 0.5;
         if (this.srcOrg !== this.destOrg) {
             console.log('Fetching from dest remote ' + this.destRemote.name());
-            return this.destRemote.fetch(null, Git.Signature.default(this.repo), null);
+            return this.destRemote.fetch(null, fetchOptions, Git.Signature.default(this.repo));
         } else {
             console.log('Dest remote is src remote, no need to fetch it');
             return Promise.resolve();
@@ -235,7 +227,7 @@ PullRequest.prototype._findMergeBase = function() {
     this.promise = this.promise.then(function() {
         this.currentStage = 3.5;
         console.log('Finding merge base for ' + this.srcHeadCommit.id().toString() + ' and ' + this.destHeadCommit.id().toString());
-        return Git.Merge.base(this.repo, this.srcHeadCommit.id().toString(), this.destHeadCommit.id().toString());    
+        return Git.Merge.base(this.repo, this.srcHeadCommit.id().toString(), this.destHeadCommit.id().toString());
     }.bind(this))
 
     .then(function(mergeBaseCommitId) {
@@ -254,7 +246,7 @@ PullRequest.prototype._forceCreateBranchFromCommit = function(branchName, commit
     this.promise = this.promise.then(function() {
         var prefixedBranch = PullRequest.PREFIX + localPrefix + branchName;
         console.log('Force creating branch ' + prefixedBranch + ' from commit ' + commit.id().toString());
-        return Git.Branch.create(this.repo, prefixedBranch, commit, 1, Git.Signature.default(this.repo), null);
+        return Git.Branch.create(this.repo, prefixedBranch, commit, 1);
     }.bind(this));
 
     return this.promise;
@@ -307,7 +299,7 @@ PullRequest.prototype._failIfIndexHasConflicts = function() {
     this.promise = this.promise.then(function() {
         return this.repo.index();
     }.bind(this))
-    
+
     .then(function(index) {
         if (index.hasConflicts()) {
             throw Error('Operation generated a conflict in the index');
@@ -318,13 +310,19 @@ PullRequest.prototype._failIfIndexHasConflicts = function() {
 };
 
 PullRequest.prototype._pushBranchToRemote = function(branchName, remote, force, localPrefix) {
+    var pushOptions = new Git.PushOptions();
+    pushOptions.callbacks.certificateCheck = function() { return 1; };
+    pushOptions.callbacks.credentials = function(url, userName) {
+        return Git.Cred.sshKeyFromAgent(userName);
+    };
+
     this.promise = this.promise.then(function() {
         var refspec = 'refs/heads/' + PullRequest.PREFIX + localPrefix + branchName + ':refs/heads/' + branchName;
         if (force) {
             refspec = '+' + refspec;
         }
-        console.log('Pushing from' + PullRequest.PREFIX + localPrefix + branchName + ' to ' + remote.name() + '/' + branchName);
-        return remote.push([refspec], null, Git.Signature.default(this.repo), 'Push to ' + remote.name() + '/' + branchName);
+        console.log('Pushing from ' + PullRequest.PREFIX + localPrefix + branchName + ' to ' + remote.name() + '/' + branchName);
+        return remote.push([refspec], pushOptions);
     }.bind(this));
 
     return this.promise;
