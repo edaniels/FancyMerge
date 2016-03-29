@@ -1,6 +1,6 @@
 {
   "name": "merge-server",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A node server capable of performing rebase merges on git repositories",
   "main": "index.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "body-parser": "*",
     "express": "^4.12.2",
     "github": "0.2.3",
-    "nodegit": "^0.6.0",
+    "nodegit": "^0.12.0",
     "promise": "^6.1.0",
     "underscore": "*"
   }
