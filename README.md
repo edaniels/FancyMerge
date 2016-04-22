@@ -1,3 +1,7 @@
+# Update 04/21/2016
+
+As of 04/01/2016 (no joke), GitHub has introduced essentially the same functionality that FancyMerge offers (see: https://github.com/blog/2141-squash-your-commits). It doesn't offer the ability to use the pull request name as the commit name by default. We recommend the use of GitHub's feature instead.
+
 # FancyMerge
 
 ## Motivation
